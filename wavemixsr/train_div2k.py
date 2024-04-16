@@ -1,5 +1,6 @@
 
 import torch
+import torch.mps
 import torch.nn as nn
 from tqdm import tqdm 
 import torch.optim as optim
@@ -8,18 +9,13 @@ from torch.utils.data import Dataset
 import PIL.Image as Image
 import torchvision.transforms as transforms
 from torchinfo import summary
-import torchmetrics
-from datasets import load_dataset
 from torchmetrics import StructuralSimilarityIndexMeasure, PeakSignalNoiseRatio
 from torchmetrics.functional import structural_similarity_index_measure
-from torch.utils.data import ConcatDataset
 import argparse
 import kornia
-import wavemix
 from wavemix import Level1Waveblock
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print(torch.cuda.get_device_properties(device))
+device = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
 
 torch.backends.cudnn.benchmarks = True
 torch.backends.cudnn.deterministic = True
@@ -205,8 +201,6 @@ model = WaveMixSR(
 
 model.to(device)
 summary(model, input_size=(1, 3, 512, 512), col_names= ("input_size","output_size","num_params","mult_adds"), depth = 4)
-
-scaler = torch.cuda.amp.GradScaler()
 
 batch_size = 1
 
