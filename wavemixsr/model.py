@@ -50,11 +50,3 @@ class WaveMixSR(nn.Module):
         crcb = self.path2(crcb)
         
         return  torch.cat((y,crcb), dim=1)
-
-model = WaveMixSR(
-    depth = 4,
-    mult = 1,
-    ff_channel = 144,
-    final_dim = 144,
-    dropout = 0.3
-)

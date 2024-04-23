@@ -1,1 +1,4 @@
-datasets/
+datasets_*/
+
+__pycache__/
+*.pyc
