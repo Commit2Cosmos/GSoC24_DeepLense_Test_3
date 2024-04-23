@@ -9,7 +9,6 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 # from torchinfo import summary
 from torchmetrics.image import StructuralSimilarityIndexMeasure, PeakSignalNoiseRatio
-from torchmetrics.functional import structural_similarity_index_measure
 import numpy as np
 from wavemix import Level1Waveblock
 import os
@@ -19,21 +18,20 @@ from datasets import Dataset as Dataset_HF
 
 if __name__ == '__main__':
     
-    device = torch.device("mps")
-    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # torch.backends.cudnn.benchmarks = True
-    # torch.backends.cudnn.deterministic = True
-
+    torch.backends.cudnn.benchmarks = True
+    torch.backends.cudnn.deterministic = True
 
     resolution = 2
     #* ssim or psnr
     eval_metric = "psnr"
     test_dataset_name = "lens"
 
-    n = 20
+    # n = 200
 
-    ds = Dataset_HF.load_from_disk(os.path.join("./datasets_lens", "Lens")).select(range(n))
+    # ds = Dataset_HF.load_from_disk(os.path.join("./datasets_lens", "Lens")).select(range(n))
+    ds = Dataset_HF.load_from_disk(os.path.join("./datasets_lens", "Lens"))
 
     dataset_train, dataset_test, dataset_val = train_test_eval_split(ds)
 
@@ -112,7 +110,7 @@ if __name__ == '__main__':
 
 
     model = WaveMixSR(
-        depth = 2,
+        depth = 3,
         mult = 1,
         ff_channel = 144,
         final_dim = 144,
@@ -121,18 +119,18 @@ if __name__ == '__main__':
 
     model = model.to(device)
 
-    batch_size = 2
+    batch_size = 1
 
     PATH = str(test_dataset_name)+'_'+str(resolution)+'_'+str(eval_metric)+'.pth'
 
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-                                            shuffle=True)
+                                            shuffle=True, num_workers=2, pin_memory=True, prefetch_factor=2, persistent_workers=2)
     
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
-                                            shuffle=False)
+                                            shuffle=False, num_workers=2, pin_memory=True, prefetch_factor=2, persistent_workers=2)
 
     valloader = torch.utils.data.DataLoader(valset, batch_size=batch_size,
-                                            shuffle=False)
+                                            shuffle=False, num_workers=2, pin_memory=True, prefetch_factor=2, persistent_workers=2)
 
 
     psnr = PeakSignalNoiseRatio().to(device)
@@ -140,7 +138,7 @@ if __name__ == '__main__':
 
     criterion = nn.HuberLoss() 
 
-    # scaler = torch.cuda.amp.GradScaler()
+    scaler = torch.cuda.amp.GradScaler()
     toppsnr = []
     topssim = []
     traintime = []
@@ -168,19 +166,16 @@ if __name__ == '__main__':
                 optimizer.zero_grad()
                 outputs = model(inputs)
 
-                # outputs = outputs[:, 0:1, :, :]
-                # labels = labels[:, 0:1, :, :]
-            
-                # with torch.cuda.amp.autocast():
-                loss = criterion(outputs, labels) 
-                loss.backward()
-                optimizer.step()
-                # scaler.scale(loss).backward()
-                # scaler.step(optimizer)
-                # scaler.update()
+                with torch.cuda.amp.autocast():
+                    loss = criterion(outputs, labels) 
+                # loss.backward()
+                # optimizer.step()
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
 
                 epoch_PSNR = psnr(outputs, labels) 
-                epoch_SSIM = structural_similarity_index_measure(outputs, labels)
+                epoch_SSIM = ssim(outputs, labels)
                 
                 epoch_loss += loss / len(trainloader)
                 tepoch.set_postfix_str(f" loss : {epoch_loss:.4f} - PSNR: {epoch_PSNR:.4f} - SSIM: {epoch_SSIM:.4f}" )
@@ -194,11 +189,8 @@ if __name__ == '__main__':
                 images, labels = data[0].to(device), data[1].to(device)
                 outputs = model(images)
 
-                # outputs = outputs[:, 0:1, :, :]
-                # labels = labels[:, 0:1, :, :]
-
                 PSNR += psnr(outputs, labels) / len(testloader)
-                sim += structural_similarity_index_measure(outputs, labels) / len(testloader)
+                sim += ssim(outputs, labels) / len(testloader)
 
         
         print(f"Epoch : {epoch+1} - PSNR_y: {PSNR:.2f} - SSIM_y: {sim:.4f}  - Test Time: {time.time() - t1:.0f}\n")
@@ -242,16 +234,17 @@ if __name__ == '__main__':
                 inputs, labels = data[0].to(device), data[1].to(device)
                 optimizer.zero_grad()
                 outputs = model(inputs)
-            #   outputs = outputs[:, 0:1, :, :]
-            #   labels = labels[:, 0:1, :, :]
 
-            #   with torch.cuda.amp.autocast():
-                loss = criterion(outputs, labels) 
-                loss.backward()
-                optimizer.step()
+                with torch.cuda.amp.autocast():
+                    loss = criterion(outputs, labels) 
+                # loss.backward()
+                # optimizer.step()
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
 
                 epoch_PSNR = psnr(outputs, labels) 
-                epoch_SSIM = structural_similarity_index_measure(outputs, labels)
+                epoch_SSIM = ssim(outputs, labels)
                 epoch_loss += loss / len(trainloader)
                 tepoch.set_postfix_str(f" loss : {epoch_loss:.4f} - PSNR: {epoch_PSNR:.4f} - SSIM: {epoch_SSIM:.4f}" )
 
@@ -264,11 +257,8 @@ if __name__ == '__main__':
                 images, labels = data[0].to(device), data[1].to(device)
                 outputs = model(images)
 
-                # outputs = outputs[:, 0:1, :, :]
-                # labels = labels[:, 0:1, :, :]
-
                 PSNR += psnr(outputs, labels) / len(testloader)
-                sim += structural_similarity_index_measure(outputs, labels) / len(testloader)
+                sim += ssim(outputs, labels) / len(testloader)
 
         
         print(f"Epoch : {epoch+1} - PSNR_y: {PSNR:.2f} - SSIM_y: {sim:.4f}  - Test Time: {time.time() - t1:.0f}\n")
@@ -296,7 +286,7 @@ if __name__ == '__main__':
     print('Finished Training')
     model.load_state_dict(torch.load(PATH))
 
-    print('Results for Div2k val')
+    print('Results for Lens val')
     print(f"PSNR_y: {float(max(toppsnr)):.4f} - SSIM_y: {float(max(topssim)):.4f}  - Test Time: {min(testtime):.0f}\n")
 
 
@@ -306,16 +296,11 @@ if __name__ == '__main__':
     with torch.no_grad():
         for data in testloader:
 
-            images, labels = data[0].to(device), data[1].to(device) 
-            outputs = model(images) 
+            images, labels = data[0].to(device), data[1].to(device)
+            outputs = model(images)
 
-            # Extract Y Channel
-            outputs_ychannel = outputs[:, 0:1, :, :]
-            labels_ychannel = labels[:, 0:1, :, :]
-
-            
-            PSNR_y += psnr(outputs_ychannel, labels_ychannel) / len(testloader)
-            SSIM_y += float(ssim(outputs_ychannel, labels_ychannel)) / len(testloader)
+            PSNR_y += psnr(outputs, labels) / len(testloader)
+            SSIM_y += float(ssim(outputs, labels)) / len(testloader)
 
 
     print("Training and Validating in Div2k")

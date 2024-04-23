@@ -24,10 +24,10 @@ def train_test_eval_split(ds: Dataset):
 
 
 
-def save_data(data_dir = "./datasets_lens"):
+def save_data(load_from_dir = "./datasets_lens", save_to_dir = "./datasets_lens"):
 
-    lr_folder = os.path.join(data_dir, "LR")
-    hr_folder = os.path.join(data_dir, "HR")
+    lr_folder = os.path.join(load_from_dir, "LR")
+    hr_folder = os.path.join(load_from_dir, "HR")
 
 
     lr_filenames = sorted(os.listdir(lr_folder))
@@ -51,4 +51,4 @@ def save_data(data_dir = "./datasets_lens"):
 
 
     ds = Dataset.from_dict(data)
-    ds.save_to_disk(os.path.join(data_dir, "Lens"))
+    ds.save_to_disk(os.path.join(save_to_dir, "Lens"))
