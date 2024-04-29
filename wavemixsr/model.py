@@ -1,7 +1,7 @@
-import torch
 import torch.nn as nn
-import wavemix
 from wavemix import Level1Waveblock
+
+resolution = 2
 
 class WaveMixSR(nn.Module):
     def __init__(
@@ -20,33 +20,24 @@ class WaveMixSR(nn.Module):
             self.layers.append(Level1Waveblock(mult = mult, ff_channel = ff_channel, final_dim = final_dim, dropout = dropout))
         
         self.final = nn.Sequential(
-            nn.Conv2d(final_dim,int(final_dim/2), 3, stride=1, padding=1),
+            nn.Conv2d(final_dim, int(final_dim/2), 3, stride=1, padding=1),
             nn.Conv2d(int(final_dim/2), 1, 1)
         )
 
 
         self.path1 = nn.Sequential(
-            nn.Upsample(scale_factor=2, mode='bicubic', align_corners = False),
+            nn.Upsample(scale_factor=int(resolution), mode='bilinear', align_corners = False),
             nn.Conv2d(1, int(final_dim/2), 3, 1, 1),
             nn.Conv2d(int(final_dim/2), final_dim, 3, 1, 1)
         )
 
-        self.path2 = nn.Sequential(
-            nn.Upsample(scale_factor=2, mode='bicubic', align_corners = False),
-        )
-
     def forward(self, img):
 
-        y = img[:, 0:1, :, :] 
-        crcb = img[:, 1:3, :, :]
-
-        y = self.path1(y)
+        img = self.path1(img)
 
         for attn in self.layers:
-            y = attn(y) + y
+            img = attn(img) + img
 
-        y = self.final(y)
+        img = self.final(img)
 
-        crcb = self.path2(crcb)
-        
-        return  torch.cat((y,crcb), dim=1)
+        return img

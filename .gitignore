@@ -2,3 +2,4 @@ datasets_*/
 *.pth
 __pycache__/
 *.pyc
+weights/*

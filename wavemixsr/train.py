@@ -5,15 +5,12 @@ import torch.nn as nn
 from tqdm import tqdm
 import torch.optim as optim
 import time
-from torch.utils.data import Dataset
-import torchvision.transforms as transforms
 # from torchinfo import summary
 from torchmetrics.image import StructuralSimilarityIndexMeasure, PeakSignalNoiseRatio
-import numpy as np
 from wavemix import Level1Waveblock
 import os
 
-from utils import train_test_eval_split
+from utils import train_test_eval_split, SuperResolutionDataset
 from datasets import Dataset as Dataset_HF
 
 if __name__ == '__main__':
@@ -34,29 +31,6 @@ if __name__ == '__main__':
     ds = Dataset_HF.load_from_disk(os.path.join("./datasets_lens", "Lens"))
 
     dataset_train, dataset_test, dataset_val = train_test_eval_split(ds)
-
-
-    class SuperResolutionDataset(Dataset):
-        def __init__(self, dataset):
-            self.dataset = dataset
-            self.transform = transforms.ToTensor()
-            
-
-        def __len__(self):
-            return len(self.dataset)
-
-        def __getitem__(self, idx):
-            image = self.dataset[idx]["lr"]
-            image = np.array(image, dtype=np.float32).transpose((1,2,0))
-
-
-            target = self.dataset[idx]["hr"] 
-            target = np.array(target, dtype=np.float32).transpose((1,2,0))
-
-            image = self.transform(image)
-            target = self.transform(target)
-
-            return image, target
 
 
     trainset = SuperResolutionDataset(dataset_train)

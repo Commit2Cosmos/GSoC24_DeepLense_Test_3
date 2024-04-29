@@ -1,9 +1,12 @@
 import os
 import numpy as np
-from datasets import Dataset, DatasetDict
+from datasets import Dataset as Dataset_HF, DatasetDict
+from torch.utils.data import Dataset
+import torchvision.transforms as transforms
 
 
-def train_test_eval_split(ds: Dataset):
+
+def train_test_eval_split(ds: Dataset_HF):
     ds: DatasetDict = ds.train_test_split(
         test_size=0.2,
         seed=42
@@ -26,8 +29,8 @@ def train_test_eval_split(ds: Dataset):
 
 def save_data(load_from_dir = "./datasets_lens", save_to_dir = "./datasets_lens"):
 
-    lr_folder = os.path.join(load_from_dir, "LR")
-    hr_folder = os.path.join(load_from_dir, "HR")
+    lr_folder = os.path.join(load_from_dir, "LR_2")
+    hr_folder = os.path.join(load_from_dir, "HR_2")
 
 
     lr_filenames = sorted(os.listdir(lr_folder))
@@ -50,5 +53,28 @@ def save_data(load_from_dir = "./datasets_lens", save_to_dir = "./datasets_lens"
             raise ValueError("Not .npy file found")
 
 
-    ds = Dataset.from_dict(data)
-    ds.save_to_disk(os.path.join(save_to_dir, "Lens"))
+    ds = Dataset_HF.from_dict(data)
+    ds.save_to_disk(os.path.join(save_to_dir, "Lens_2"))
+
+
+class SuperResolutionDataset(Dataset):
+        def __init__(self, dataset):
+            self.dataset = dataset
+            self.transform = transforms.ToTensor()
+            
+
+        def __len__(self):
+            return len(self.dataset)
+
+        def __getitem__(self, idx):
+            image = self.dataset[idx]["lr"]
+            image = np.array(image, dtype=np.float32).transpose((1,2,0))
+
+
+            target = self.dataset[idx]["hr"] 
+            target = np.array(target, dtype=np.float32).transpose((1,2,0))
+
+            image = self.transform(image)
+            target = self.transform(target)
+
+            return image, target
