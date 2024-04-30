@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torchmetrics.image import StructuralSimilarityIndexMeasure, PeakSignalNoiseRatio
-from utils import SuperResolutionDataset
+from utils import SuperResolutionDataset, SuperResolutionDataset_2
 from model import WaveMixSR
 from datasets import Dataset as Dataset_HF
 import os
@@ -37,27 +37,27 @@ psnr = PeakSignalNoiseRatio().to(device)
 
 model.eval()
 
-ds = Dataset_HF.load_from_disk(os.path.join("./datasets_lens", "Lens_2")).select(range(100))
+ds = Dataset_HF.load_from_disk(os.path.join("./datasets_lens", "Lens_2"))
+valset = SuperResolutionDataset_2(ds)
 
-valset = SuperResolutionDataset(ds)
+print(len(valset))
+
+# batch_size = 1
+# testloader = torch.utils.data.DataLoader(valset, batch_size=batch_size,
+#                                         shuffle=False)
+
+# PSNR = 0.
+# SSIM = 0.
+
+# with torch.no_grad():
+#     with tqdm(testloader, unit="batch") as tepoch:
+#         for data in tepoch:
+
+#             images, labels = data[0].to(device), data[1].to(device) 
+#             outputs = model(images) 
+
+#             PSNR += psnr(outputs, labels) / len(testloader)
+#             SSIM += ssim(outputs, labels) / len(testloader)
 
 
-batch_size = 1
-testloader = torch.utils.data.DataLoader(valset, batch_size=batch_size,
-                                        shuffle=False)
-
-PSNR = 0.
-SSIM = 0.
-
-with torch.no_grad():
-    with tqdm(testloader, unit="batch") as tepoch:
-        for data in tepoch:
-
-            images, labels = data[0].to(device), data[1].to(device) 
-            outputs = model(images) 
-
-            PSNR += psnr(outputs, labels) / len(testloader)
-            SSIM += ssim(outputs, labels) / len(testloader)
-
-
-print(f"PSNR: {PSNR:.2f} - SSIM: {SSIM:.4f}\n")
+# print(f"PSNR: {PSNR:.2f} - SSIM: {SSIM:.4f}\n")

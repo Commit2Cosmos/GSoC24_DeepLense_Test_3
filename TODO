@@ -1,0 +1,5 @@
+- Augment every image twice & extend the dataset + 
+    apply wiener & check for faulty to source and target
+
+
+- Transfer learning

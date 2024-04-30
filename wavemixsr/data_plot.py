@@ -7,27 +7,31 @@ import numpy as np
 from utils import SuperResolutionDataset
 
 
-def plot_imgs(dataset: SuperResolutionDataset):
-    fig, axes = plt.subplots(2, 4, sharex='all', sharey='all', figsize=(15,12))
+def plot_imgs(dataset: SuperResolutionDataset, j, cols):
+    fig, axes = plt.subplots(2, cols, sharex='all', sharey='all', figsize=(14,9))
     plt.axis('off')
 
     axes = axes.flatten()
-
+    
     for i in range(0, int(len(axes)/2)):
-        axes[i].imshow(trainset[i+10][0].transpose(0, 2), extent=[0, 1, 0, 1])
-        axes[i+4].imshow(trainset[i+10][1].transpose(0, 2), extent=[0, 1, 0, 1])
+        axes[i].imshow(dataset[i+j][0].transpose(0, 2), extent=[0, 1, 0, 1])
+        axes[i+cols].imshow(dataset[i+j][1].transpose(0, 2), extent=[0, 1, 0, 1])
 
 
     plt.tight_layout()
     plt.show()
 
 
-n = 100
 
+# n = 100
 # ds = Dataset_HF.load_from_disk(os.path.join("./datasets_lens", "Lens_2")).select(range(n))
 ds = Dataset_HF.load_from_disk(os.path.join("./datasets_lens", "Lens_2"))
 
 
 trainset = SuperResolutionDataset(ds)
 
-plot_imgs(trainset)
+
+cols = 3
+
+for i in range(int(len(trainset)/cols)):
+    plot_imgs(trainset, i*cols, cols)
