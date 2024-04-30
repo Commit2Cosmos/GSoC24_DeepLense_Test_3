@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import numpy as np
-from utils import SuperResolutionDataset
+from utils import SuperResolutionDataset, SuperResolutionDataset_2
 
 
 def plot_imgs(dataset: SuperResolutionDataset, j, cols):
@@ -28,7 +28,7 @@ def plot_imgs(dataset: SuperResolutionDataset, j, cols):
 ds = Dataset_HF.load_from_disk(os.path.join("./datasets_lens", "Lens_2"))
 
 
-trainset = SuperResolutionDataset(ds)
+trainset = SuperResolutionDataset_2(ds)
 
 
 cols = 3

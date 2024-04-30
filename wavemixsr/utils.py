@@ -4,6 +4,7 @@ from datasets import Dataset as Dataset_HF, DatasetDict
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 import torch
+from scipy.signal import correlate
 
 
 
@@ -39,7 +40,9 @@ def save_data(load_from_dir = "./datasets_lens", save_to_dir = "./datasets_lens"
 
 
     data = {'lr': [], 'hr': []}
-    for lr_filename, hr_filename in zip(lr_filenames, hr_filenames):
+    for (i, (lr_filename, hr_filename)) in enumerate(zip(lr_filenames, hr_filenames)):
+        if i == 23 or i == 103:
+            continue
         if lr_filename.endswith('.npy') and hr_filename.endswith('.npy'):
 
             #* Load LR and HR images
@@ -80,19 +83,60 @@ class SuperResolutionDataset(Dataset):
 
         return image, target
     
-    
+
+class Wiener:
+    def __call__(self, im: torch.Tensor, mysize=None, noise=None) -> torch.Tensor:
+        
+        im = np.asarray(im)
+        if mysize is None:
+            mysize = [4] * im.ndim
+        mysize = np.asarray(mysize)
+
+        if mysize.shape == ():
+            mysize = np.repeat(mysize.item(), im.ndim)
+
+        # Estimate the local mean
+        lMean = correlate(im, np.ones(mysize), 'same') / np.prod(mysize, axis=0)
+
+        # Estimate the local variance
+        lVar = (correlate(im ** 2, np.ones(mysize), 'same') /
+            np.prod(mysize, axis=0) - lMean ** 2)
+
+        # Estimate the noise power if needed.
+        if noise is None:
+            noise = np.mean(np.ravel(lVar), axis=0)
+
+        res = (im - lMean)
+        res *= (1 - noise / lVar)
+        res += lMean
+        out = np.where(lVar < noise, lMean, res)
+
+        return torch.tensor(out, dtype=torch.float32)
+
+
+class MinMaxNormalizeImage:
+    def __call__(self, img: torch.Tensor):
+        min_val = img.min()
+        max_val = img.max()
+        normalized_tensor = (img - min_val) / (max_val - min_val)
+        return normalized_tensor
+
 
 class SuperResolutionDataset_2(Dataset):
     def __init__(self, dataset):
         self.dataset = dataset
-        self.transform = transforms.ToTensor()
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),
+            Wiener(),
+            MinMaxNormalizeImage()
+        ])
 
         self.augmentation_transform_1 = transforms.Compose([
-            # transforms.RandomAffine(45, translate=(0.3, 0.3), scale=(0.8, 1.2), shear=(-0.3, 0.3, -0.3, 0.3)),
+            MinMaxNormalizeImage()
         ])
 
         self.augmentation_transform_2 = transforms.Compose([
-            # transforms.RandomAffine(45, translate=(0.3, 0.3), scale=(0.8, 1.2), shear=(-0.3, 0.3, -0.3, 0.3)),
+            MinMaxNormalizeImage()
         ])
 
         self.image_augmented = torch.empty((len(self.dataset)*3, 1, 64, 64))
@@ -106,11 +150,6 @@ class SuperResolutionDataset_2(Dataset):
     def __len__(self):
         return len(self.image_augmented)
     
-
-    def is_faulty_image(img: np.ndarray, threshold = 0.0005) -> bool:
-        res1 = np.sum(np.where(img == 1, True, False))
-        return res1/(img.shape[0]*img.shape[1]) > threshold
-
 
     def augment_dataset(self):
 
