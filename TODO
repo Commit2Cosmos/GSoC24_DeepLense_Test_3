@@ -1,6 +1,3 @@
-- Augment every image twice & extend the dataset + 
-    apply wiener & check for faulty to source and target
-
-- to delete: 23, 103
+- Augmentations: Add CutBlur
 
 - Transfer learning

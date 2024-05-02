@@ -132,10 +132,18 @@ class SuperResolutionDataset_2(Dataset):
         ])
 
         self.augmentation_transform_1 = transforms.Compose([
+            transforms.RandomRotation(90),
+            transforms.RandomVerticalFlip(),
+            transforms.RandomHorizontalFlip(),
+            # transforms.RandomAffine(45, scale=(0.8, 1.2), shear=(-0.3, 0.3, -0.3, 0.3)),
             MinMaxNormalizeImage()
         ])
 
         self.augmentation_transform_2 = transforms.Compose([
+            transforms.RandomRotation(90),
+            transforms.RandomVerticalFlip(),
+            transforms.RandomHorizontalFlip(),
+            # transforms.RandomAffine(45, scale=(0.8, 1.2), shear=(-0.3, 0.3, -0.3, 0.3)),
             MinMaxNormalizeImage()
         ])
 
@@ -163,13 +171,17 @@ class SuperResolutionDataset_2(Dataset):
             self.image_augmented[idx*3] = image
             self.target_augmented[idx*3] = target
 
+            torch.manual_seed(idx)
             image_1 = self.augmentation_transform_1(image)
+            torch.manual_seed(idx)
             target_1 = self.augmentation_transform_1(target)
 
             self.image_augmented[(idx*3)+1] = image_1
             self.target_augmented[(idx*3)+1] = target_1
 
+            torch.manual_seed(idx)
             image_2 = self.augmentation_transform_2(image)
+            torch.manual_seed(idx)
             target_2 = self.augmentation_transform_2(target)
 
             self.image_augmented[(idx*3)+2] = image_2
