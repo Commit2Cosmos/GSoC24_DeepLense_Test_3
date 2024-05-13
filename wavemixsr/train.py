@@ -7,7 +7,7 @@ import torch.optim as optim
 import time
 # from torchinfo import summary
 from torchmetrics.image import StructuralSimilarityIndexMeasure, PeakSignalNoiseRatio
-from wavemix import Level1Waveblock
+from model import WaveMixSR
 import os
 
 from utils import train_test_eval_split, SuperResolutionDataset
@@ -41,46 +41,6 @@ if __name__ == '__main__':
     print(len(trainset))
     print(len(valset))
     print(len(testset))
-
-
-    class WaveMixSR(nn.Module):
-        def __init__(
-            self,
-            *,
-            depth,
-            mult = 1,
-            ff_channel = 16,
-            final_dim = 16,
-            dropout = 0.3,
-        ):
-            super().__init__()
-            
-            self.layers = nn.ModuleList([])
-            for _ in range(depth):
-                self.layers.append(Level1Waveblock(mult = mult, ff_channel = ff_channel, final_dim = final_dim, dropout = dropout))
-            
-            self.final = nn.Sequential(
-                nn.Conv2d(final_dim, int(final_dim/2), 3, stride=1, padding=1),
-                nn.Conv2d(int(final_dim/2), 1, 1)
-            )
-
-
-            self.path1 = nn.Sequential(
-                nn.Upsample(scale_factor=int(resolution), mode='bilinear', align_corners = False),
-                nn.Conv2d(1, int(final_dim/2), 3, 1, 1),
-                nn.Conv2d(int(final_dim/2), final_dim, 3, 1, 1)
-            )
-
-        def forward(self, img):
-
-            img = self.path1(img)
-
-            for attn in self.layers:
-                img = attn(img) + img
-
-            img = self.final(img)
-
-            return img
 
 
     model = WaveMixSR(

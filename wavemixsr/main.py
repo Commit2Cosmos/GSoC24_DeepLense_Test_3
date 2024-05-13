@@ -1,10 +1,17 @@
-import torch
-import torch.nn.functional as F
+from model import WaveMixSR
 
 
-LR = torch.rand((1,1,64,64))
+model = WaveMixSR(
+    depth = 3,
+    mult = 1,
+    ff_channel = 144,
+    final_dim = 144,
+    dropout = 0.3
+)
 
-# Upsample LR using nearest interpolation with scale_factor=2
-LR = F.interpolate(LR, scale_factor=2, mode="nearest")
+for name, param in model.named_parameters():
+    if 'layers' in name or 'path1' in name:
+        param.requires_grad = False
 
-print(LR.shape)
+for name, param in model.named_parameters():
+    print(name, param.requires_grad)
