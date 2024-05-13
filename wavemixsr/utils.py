@@ -5,6 +5,8 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 import torch
 from scipy.signal import correlate
+import time
+import torch.nn.functional as F
 
 
 
@@ -114,6 +116,45 @@ class Wiener:
         return torch.tensor(out, dtype=torch.float32)
 
 
+def cutblur(im1, im2, prob, alpha):
+    if im1.size() != im2.size():
+        raise ValueError("im1 and im2 have to be the same resolution.")
+
+    if alpha <= 0 or np.random.rand(1) >= prob:
+        return im1, im2
+
+    cut_ratio = np.random.randn() * 0.01 + alpha
+
+    h, w = im2.size(2), im2.size(3)
+    ch, cw = int(h*cut_ratio), int(w*cut_ratio)
+    cy = np.random.randint(0, h-ch+1)
+    cx = np.random.randint(0, w-cw+1)
+
+    # apply CutBlur to inside or outside
+    if np.random.random() > 0.5:
+        im2[..., cy:cy+ch, cx:cx+cw] = im1[..., cy:cy+ch, cx:cx+cw]
+    else:
+        im2_aug = im1.clone()
+        im2_aug[..., cy:cy+ch, cx:cx+cw] = im2[..., cy:cy+ch, cx:cx+cw]
+        im2 = im2_aug
+
+    return im1, im2
+
+
+def apply_cutblur(HR, LR, prob=1.0, alpha=0.4):
+
+    if HR.size() != LR.size():
+        LR = F.interpolate(LR, scale_factor=2, mode="nearest")
+
+    HR, LR = cutblur(
+        HR.clone(), LR.clone(),
+        prob=prob, alpha=alpha
+    )
+
+    return HR, LR
+
+
+
 class MinMaxNormalizeImage:
     def __call__(self, img: torch.Tensor):
         min_val = img.min()
@@ -136,6 +177,7 @@ class SuperResolutionDataset_2(Dataset):
             transforms.RandomVerticalFlip(),
             transforms.RandomHorizontalFlip(),
             # transforms.RandomAffine(45, scale=(0.8, 1.2), shear=(-0.3, 0.3, -0.3, 0.3)),
+            Wiener(),
             MinMaxNormalizeImage()
         ])
 
@@ -144,6 +186,7 @@ class SuperResolutionDataset_2(Dataset):
             transforms.RandomVerticalFlip(),
             transforms.RandomHorizontalFlip(),
             # transforms.RandomAffine(45, scale=(0.8, 1.2), shear=(-0.3, 0.3, -0.3, 0.3)),
+            Wiener(),
             MinMaxNormalizeImage()
         ])
 
@@ -179,9 +222,9 @@ class SuperResolutionDataset_2(Dataset):
             self.image_augmented[(idx*3)+1] = image_1
             self.target_augmented[(idx*3)+1] = target_1
 
-            torch.manual_seed(idx)
+            torch.manual_seed(idx+42)
             image_2 = self.augmentation_transform_2(image)
-            torch.manual_seed(idx)
+            torch.manual_seed(idx+42)
             target_2 = self.augmentation_transform_2(target)
 
             self.image_augmented[(idx*3)+2] = image_2
