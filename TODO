@@ -1,4 +1,4 @@
-- Augmentations: Add CutBlur
+- Augmentations: Add CutBlur (retrain model cz source & label will have same dimension)
 
 - Transfer learning
 

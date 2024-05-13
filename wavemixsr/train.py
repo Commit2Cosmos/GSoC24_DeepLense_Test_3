@@ -53,7 +53,7 @@ if __name__ == '__main__':
 
     model = model.to(device)
 
-    model.load_state_dict(torch.load("../weights/Task3_weights.pth"))
+    model.load_state_dict(torch.load("/content/drive/MyDrive/GSOC24_DeepLens/results/Task3_weights.pth"))
 
     for name, param in model.named_parameters():
         if 'layers' in name or 'path1' in name:
@@ -105,7 +105,7 @@ if __name__ == '__main__':
                 inputs, labels = data[0].to(device), data[1].to(device)
                 optimizer.zero_grad()
 
-                labels, inputs = apply_cutblur(labels, inputs)
+                # labels, inputs = apply_cutblur(labels, inputs)
 
                 outputs = model(inputs)
 
@@ -177,7 +177,7 @@ if __name__ == '__main__':
                 inputs, labels = data[0].to(device), data[1].to(device)
                 optimizer.zero_grad()
                 
-                labels, inputs = apply_cutblur(labels, inputs)
+                # labels, inputs = apply_cutblur(labels, inputs)
                 
                 outputs = model(inputs)
 
