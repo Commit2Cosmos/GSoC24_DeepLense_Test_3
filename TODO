@@ -1,3 +1,5 @@
 - Augmentations: Add CutBlur
 
 - Transfer learning
+
+- Add MSE as eval metrics

@@ -10,7 +10,7 @@ from torchmetrics.image import StructuralSimilarityIndexMeasure, PeakSignalNoise
 from model import WaveMixSR
 import os
 
-from utils import train_test_eval_split, SuperResolutionDataset
+from utils import train_test_eval_split, SuperResolutionDataset_2, apply_cutblur
 from datasets import Dataset as Dataset_HF
 
 if __name__ == '__main__':
@@ -23,19 +23,19 @@ if __name__ == '__main__':
     resolution = 2
     #* ssim or psnr
     eval_metric = "psnr"
-    test_dataset_name = "lens"
+    test_dataset_name = "lens_2"
 
     # n = 200
 
     # ds = Dataset_HF.load_from_disk(os.path.join("./datasets_lens", "Lens")).select(range(n))
-    ds = Dataset_HF.load_from_disk(os.path.join("./datasets_lens", "Lens"))
+    ds = Dataset_HF.load_from_disk(os.path.join("./datasets_lens", "Lens_2"))
 
     dataset_train, dataset_test, dataset_val = train_test_eval_split(ds)
 
 
-    trainset = SuperResolutionDataset(dataset_train)
-    valset = SuperResolutionDataset(dataset_val)
-    testset = SuperResolutionDataset(dataset_test)
+    trainset = SuperResolutionDataset_2(dataset_train)
+    valset = SuperResolutionDataset_2(dataset_val)
+    testset = SuperResolutionDataset_2(dataset_test)
 
 
     print(len(trainset))
@@ -52,6 +52,12 @@ if __name__ == '__main__':
     )
 
     model = model.to(device)
+
+    model.load_state_dict(torch.load("../weights/Task3_weights.pth"))
+
+    for name, param in model.named_parameters():
+        if 'layers' in name or 'path1' in name:
+            param.requires_grad = False
 
     batch_size = 1
 
@@ -98,6 +104,9 @@ if __name__ == '__main__':
         
                 inputs, labels = data[0].to(device), data[1].to(device)
                 optimizer.zero_grad()
+
+                labels, inputs = apply_cutblur(labels, inputs)
+
                 outputs = model(inputs)
 
                 with torch.cuda.amp.autocast():
@@ -167,6 +176,9 @@ if __name__ == '__main__':
         
                 inputs, labels = data[0].to(device), data[1].to(device)
                 optimizer.zero_grad()
+                
+                labels, inputs = apply_cutblur(labels, inputs)
+                
                 outputs = model(inputs)
 
                 with torch.cuda.amp.autocast():
